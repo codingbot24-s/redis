@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"log"
 	"strconv"
@@ -50,7 +51,6 @@ func (r *Resp) readLine() (line []byte, n int, err error) {
 	return line[:len(line)-2], n, err
 }
 
-// $5\r\nAhmed\r\n"
 func (r *Resp) readInteger() (x int,err error) {
 	line, _, err := r.readLine()
 	if err != nil {
@@ -61,4 +61,24 @@ func (r *Resp) readInteger() (x int,err error) {
 		log.Fatal("error in parsing",err)
 	}
 	return int(i),err
+}
+
+
+func (r *Resp) Read() (Value,error) {
+	_type,err := r.reader.ReadByte()
+	if err != nil {
+		log.Fatal("error reading type")
+	}
+
+	switch _type {
+		case ARRAY:
+			return Value{},err
+		case ERROR:
+			return Value{},err
+		case BULK:
+			return Value{},err
+		default:
+			fmt.Printf("unknown type %c\n",_type)
+			return Value{},err
+	}
 }
