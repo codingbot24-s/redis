@@ -44,7 +44,9 @@ func main() {
 			continue
 		}
 		cmd := strings.ToUpper(val.array[0].bulk)
+
 		args := val.array[1:]
+
 		writer := newWritter(conn)
 		handler, ok := Handlers[cmd]
 		if !ok {
