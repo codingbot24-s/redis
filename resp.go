@@ -28,57 +28,84 @@ type Resp struct {
 	reader bufio.Reader
 }
 
-func newResp(rd io.Reader) *Resp {
+func NewResp(rd io.Reader) *Resp {
 	return &Resp{reader: *bufio.NewReader(rd)}
 }
 
 func (r *Resp) readLine() (line []byte, n int, err error) {
-
 	for {
 		b, err := r.reader.ReadByte()
 		if err != nil {
-			log.Fatal("error reading byte")
+			return nil, 0, err
 		}
-		n = len(line)
+		n += 1
 		line = append(line, b)
-		len := len(line)
-		var sep = len - 2
-		if string(line[sep]) == "\r" {
+		if len(line) >= 2 && line[len(line)-2] == '\r' {
 			break
 		}
 	}
-
-	return line[:len(line)-2], n, err
+	return line[:len(line)-2], n, nil
 }
 
-func (r *Resp) readInteger() (x int,err error) {
-	line, _, err := r.readLine()
+func (r *Resp) readInteger() (x int, n int, err error) {
+	line, n, err := r.readLine()
 	if err != nil {
-		log.Fatal("Error reading line")
+		return 0, 0, err
 	}
-	i,err := strconv.ParseInt(string(line), 10, 64)
+	i64, err := strconv.ParseInt(string(line), 10, 64)
 	if err != nil {
-		log.Fatal("error in parsing",err)
+		return 0, n, err
 	}
-	return int(i),err
+	return int(i64), n, nil
 }
-
-
-func (r *Resp) Read() (Value,error) {
-	_type,err := r.reader.ReadByte()
+func (r *Resp) Read() (Value, error) {
+	_type, err := r.reader.ReadByte()
 	if err != nil {
 		log.Fatal("error reading type")
 	}
 
 	switch _type {
-		case ARRAY:
-			return Value{},err
-		case ERROR:
-			return Value{},err
-		case BULK:
-			return Value{},err
-		default:
-			fmt.Printf("unknown type %c\n",_type)
-			return Value{},err
+	case ARRAY:
+		return r.ReadArray()
+	case BULK:
+		return r.ReadBulk()
+	default:
+		fmt.Printf("unknown type %c\n", _type)
+		return Value{}, err
 	}
+}
+
+func (r *Resp) ReadArray() (Value, error) {
+	v := Value{}
+	v.typ = "array"
+
+	len, _, err := r.readInteger()
+	if err != nil {
+		log.Fatal("error reading length")
+	}
+
+	for range len {
+		val, err := r.Read()
+		if err != nil {
+			log.Fatal("error reading value")
+		}
+		v.array = append(v.array, val)
+	}
+	return v, err
+}
+
+func (r *Resp) ReadBulk() (Value, error) {
+	v := Value{}
+	v.typ = "bulk"
+
+	len, _, err := r.readInteger()
+	if err != nil {
+		log.Fatal("error reading length")
+	}
+	bulk := make([]byte, len)
+	r.reader.Read(bulk)
+	v.bulk = string(bulk)
+	r.readLine()
+
+	return v, nil
 }

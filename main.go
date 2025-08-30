@@ -25,8 +25,8 @@ func main() {
 	defer conn.Close()	
 
 	for {
-		buf := make([]byte,1024)
-		_,err := conn.Read(buf)
+		resp := NewResp(conn)
+		val,err := resp.Read()	
 		if err != nil {
 			if err == io.EOF {
 				break
@@ -34,6 +34,7 @@ func main() {
 			log.Fatal("error in reading",err)
 			return
 		}
+		fmt.Println(val)
 		conn.Write([]byte("+OK\r\n"))
 	}
 }
