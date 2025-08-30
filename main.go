@@ -5,40 +5,55 @@ import (
 	"io"
 	"log"
 	"net"
+	"strings"
 )
-
 
 func main() {
 	fmt.Println("Listening on port :6379")
-	// create a server 
-	l,err := net.Listen("tcp",":6379")
-	if err !=  nil {
-		log.Fatal("port binding error",err)
+	// create a server
+	l, err := net.Listen("tcp", ":6379")
+	if err != nil {
+		log.Fatal("port binding error", err)
 		return
 	}
 	// listen for a connection
-	conn,err := l.Accept()	
+	conn, err := l.Accept()
 	if err != nil {
-		log.Fatal("connot accept the connection",err)
-		return 
+		log.Fatal("connot accept the connection", err)
+		return
 	}
-	defer conn.Close()	
+	defer conn.Close()
 
 	for {
 		resp := NewResp(conn)
-		_,err := resp.Read()	
+		val, err := resp.Read()
 		if err != nil {
 			if err == io.EOF {
 				break
 			}
-			log.Fatal("error in reading",err)
+			log.Fatal("error in reading", err)
 			return
 		}
-		writer := newWritter(conn)		
-		err = writer.Write(Value{typ:"string",str:"hello"})
-		if err != nil {
-			log.Fatal("error in writing",err)
-			return
+
+		if val.typ != "array" {
+			fmt.Println("Invalid request, expected array")
+			continue
 		}
+		if len(val.array) == 0 {
+			fmt.Println("Invalid request, expected array length > 0")
+			continue
+		}
+		cmd := strings.ToUpper(val.array[0].bulk)
+		args := val.array[1:]
+		writer := newWritter(conn)
+		handler, ok := Handlers[cmd]
+		if !ok {
+			fmt.Println("Invalid command")
+			writer.Write(Value{typ: "error", str: "invalid command"})
+			continue
+		}
+
+		result := handler(args)
+		writer.Write(result)
 	}
 }
