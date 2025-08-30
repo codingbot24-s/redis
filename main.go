@@ -26,7 +26,7 @@ func main() {
 
 	for {
 		resp := NewResp(conn)
-		val,err := resp.Read()	
+		_,err := resp.Read()	
 		if err != nil {
 			if err == io.EOF {
 				break
@@ -34,7 +34,11 @@ func main() {
 			log.Fatal("error in reading",err)
 			return
 		}
-		fmt.Println(val)
-		conn.Write([]byte("+OK\r\n"))
+		writer := newWritter(conn)		
+		err = writer.Write(Value{typ:"string",str:"hello"})
+		if err != nil {
+			log.Fatal("error in writing",err)
+			return
+		}
 	}
 }
